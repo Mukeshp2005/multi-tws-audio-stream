@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🎧 Multi-TWS Launcher</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Orbitron:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gradient-dark: linear-gradient(135deg, #7f00ff, #e100ff, #00c6ff);
+    --gradient-light: linear-gradient(135deg, #fbc2eb, #a6c1ee);
+    --text-dark: #fff;
+    --text-light: #111;
+  }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    font-family: 'Poppins', sans-serif;
+    background: var(--gradient-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.6s ease;
+    overflow: hidden;
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+    color: var(--text-dark);
+    text-shadow: 0 0 20px rgba(255,255,255,0.8);
+    margin-bottom: 20px;
+    animation: glow 3s infinite alternate;
+  }
+
+  @keyframes glow {
+    0% { text-shadow: 0 0 10px #fff, 0 0 20px #b388ff, 0 0 30px #7f00ff; }
+    100% { text-shadow: 0 0 20px #fff, 0 0 40px #00c6ff, 0 0 60px #e100ff; }
+  }
+
+  .buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  button {
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-dark);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(6px);
+    transition: all 0.3s ease;
+  }
+
+  button:hover {
+    transform: scale(1.07);
+    background: rgba(255,255,255,0.3);
+    box-shadow: 0 0 20px rgba(255,255,255,0.4);
+  }
+
+  #modeToggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    padding: 10px 15px;
+    border-radius: 15px;
+    cursor: pointer;
+    color: var(--text-dark);
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+
+  #modeToggle:hover {
+    background: rgba(255,255,255,0.4);
+  }
+
+  /* Light mode */
+  body.light {
+    background: var(--gradient-light);
+  }
+
+  body.light h1, body.light button, body.light #modeToggle {
+    color: var(--text-light);
+    text-shadow: none;
+  }
+</style>
+</head>
+<body>
+  <button id="modeToggle">🌙 Dark Mode</button>
+  <h1>🎧 Multi-TWS Audio</h1>
+
+  <div class="buttons">
+    <button id="senderBtn">📤 Sender</button>
+    <button id="receiverBtn">📥 Receiver</button>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const senderBtn = document.getElementById('senderBtn');
+    const receiverBtn = document.getElementById('receiverBtn');
+    const modeToggle = document.getElementById('modeToggle');
+    const body = document.body;
+
+    senderBtn.onclick = () => ipcRenderer.send("launch-mode", "sender");
+    receiverBtn.onclick = () => ipcRenderer.send("launch-mode", "receiver");
+
+    modeToggle.onclick = () => {
+      body.classList.toggle("light");
+      modeToggle.textContent = body.classList.contains("light")
+        ? "🌑 Dark Mode"
+        : "🌙 Light Mode";
+    };
+  </script>
+</body>
+</html>
