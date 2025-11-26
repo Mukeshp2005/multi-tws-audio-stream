@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multi-TWS Audio Sender</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .otp-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 15px 0;
+  }
+  #copyBtn {
+    background: #ff80ab;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  #copyBtn:hover {
+    background: #ff4081;
+  }
+
+  .wave {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 60px;
+    margin-top: 20px;
+    gap: 3px;
+  }
+  .bar {
+    width: 6px;
+    background: linear-gradient(180deg, #00e676, #00c853);
+    border-radius: 3px;
+    animation: bounce 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes bounce {
+    from { height: 10px; }
+    to { height: 60px; }
+  }
+
+  #bitrate {
+    margin-top: 10px;
+    font-size: 1rem;
+    color: #ffea00;
+  }
+
+  #status {
+    font-size: 1rem;
+    color: #ccc;
+    margin-top: 15px;
+  }
+</style>
+</head>
+<body>
+  <h1>🎙️ Multi-TWS Audio Sender</h1>
+  <button id="startBtn">Start Sending Audio</button>
+
+  <div class="otp-container">
+    <p id="otp">🔑 OTP: —</p>
+    <button id="copyBtn">Copy</button>
+  </div>
+
+  <div class="wave" id="wave"></div>
+  <p id="bitrate">Bitrate: —</p>
+  <p id="status">Status: Idle</p>
+
+  <script>
+    const ffmpegPath = require('ffmpeg-static');
+    const { spawn } = require('child_process');
+    const WS = require('ws');
+
+    const AUTH_SERVER = "https://multi-tws-audio-stream.onrender.com";
+    const WS_SERVER = "wss://multi-tws-audio-backend.onrender.com";
+
+    const otpEl = document.getElementById("otp");
+    const statusEl = document.getElementById("status");
+    const bitrateEl = document.getElementById("bitrate");
+    const copyBtn = document.getElementById("copyBtn");
+    const waveContainer = document.getElementById("wave");
+
+    // create wave bars
+    for (let i = 0; i < 20; i++) {
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      bar.style.animationDelay = `${i * 0.05}s`;
+      waveContainer.appendChild(bar);
+    }
+
+    let ffmpeg;
+    let isStreaming = false;
+
+    async function generateOtp() {
+      const res = await fetch(`${AUTH_SERVER}/api/auth/generate`, { method: "POST" });
+      const data = await res.json();
+      otpEl.innerText = `🔑 OTP: ${data.code}`;
+      return data.code;
+    }
+
+    async function startSender() {
+      if (isStreaming) return;
+      isStreaming = true;
+
+      const code = await generateOtp();
+      const ws = new WS(WS_SERVER);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        statusEl.innerText = "✅ Connected to WebSocket | Streaming...";
+        ws.send(JSON.stringify({ type: "register_sender", code }));
+
+        ffmpeg = spawn(ffmpegPath, [
+          "-f", "dshow",
+          "-i", "audio=Stereo Mix (Realtek(R) Audio)",
+          "-ac", "1",
+          "-ar", "44100",
+          "-c:a", "aac",
+          "-b:a", "128k",
+          "-f", "adts",
+          "-"
+        ]);
+
+        ffmpeg.stdout.on("data", chunk => {
+          if (ws.readyState === WS.OPEN) ws.send(chunk);
+
+          // fake bitrate animation
+          const randomBitrate = (120 + Math.random() * 16).toFixed(1);
+          bitrateEl.innerText = `Bitrate: ${randomBitrate} kbps`;
+        });
+
+        ffmpeg.stderr.on("data", d => console.log("FFmpeg:", d.toString()));
+      };
+
+      ws.onclose = () => {
+        statusEl.innerText = "❌ WebSocket disconnected";
+        if (ffmpeg) ffmpeg.kill();
+        isStreaming = false;
+      };
+
+      ws.onerror = () => {
+        statusEl.innerText = "⚠️ WebSocket error";
+        if (ffmpeg) ffmpeg.kill();
+        isStreaming = false;
+      };
+    }
+
+    document.getElementById("startBtn").onclick = startSender;
+    copyBtn.onclick = () => {
+      const otpText = otpEl.innerText.replace("🔑 OTP: ", "");
+      navigator.clipboard.writeText(otpText);
+      copyBtn.innerText = "Copied!";
+      setTimeout(() => copyBtn.innerText = "Copy", 1500);
+    };
+  </script>
+</body>
+</html>
