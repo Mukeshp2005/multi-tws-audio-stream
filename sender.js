@@ -1,41 +1,87 @@
-const WebSocket = require("ws");
-const { spawn } = require("child_process");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multi-TWS Audio Sender</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()">🌙 / ☀️</button>
 
-const socket = new WebSocket("wss://multi-tws-audio-backend.onrender.com");
+<h1>🎙️ Multi-TWS Audio Sender</h1>
+<p style="opacity:0.8;margin-bottom:15px;">Broadcast system audio to connected receivers</p>
+
+<div class="card">
+  <button id="startBtn">🚀 Start Sending Audio</button>
+  <div id="otpDisplay">
+    <span id="otp">🔑 OTP: —</span>
+  </div>
+  <p id="status">Status: Idle</p>
+</div>
+
+<script>
+const ffmpegPath = require('ffmpeg-static');
+const { spawn } = require('child_process');
+const WS = require('ws');
+
+const AUTH_SERVER = "https://multi-tws-audio-stream.onrender.com";
+const WS_SERVER = "wss://multi-tws-audio-backend.onrender.com";
+
+const otpEl = document.getElementById("otp");
+const statusEl = document.getElementById("status");
 let ffmpeg;
 
-socket.on("open", () => {
-  console.log("✅ Connected to server from sender");
+async function generateOtp() {
+  try {
+    const res = await fetch(`${AUTH_SERVER}/api/auth/generate`, { method: "POST" });
+    const data = await res.json();
+    otpEl.innerText = `🔑 OTP: ${data.code}`;
+    otpEl.style.color = "#ffea00";
+    return data.code;
+  } catch (err) {
+    statusEl.innerText = "❌ Failed to generate OTP";
+    throw err;
+  }
+}
 
-  ffmpeg = spawn("ffmpeg", [
-    "-f", "dshow",                               // Input format (DirectShow for Windows)
-    "-i", "audio=Stereo Mix (Realtek(R) Audio)", // 🎙 Adjust based on your input device
-    "-ac", "1",                                  // Mono audio for bandwidth efficiency
-    "-ar", "44100",                              // Sample rate: 44.1kHz (standard for audio)
-    "-c:a", "aac",                               // Use AAC codec for audio
-    "-b:a", "256k",                              // Bitrate: 256 kbps (balanced quality)
-    "-f", "adts",                                // Output format: ADTS (for AAC raw stream)
-    "-"                                          // Output to stdout (pipe)
-  ]);
+async function startSender() {
+  const code = await generateOtp();
+  const ws = new WS(WS_SERVER);
+  ws.binaryType = "arraybuffer";
 
-  ffmpeg.stderr.on("data", (data) => {
-    console.error("⚠ FFmpeg error:", data.toString());
-  });
+  ws.onopen = () => {
+    statusEl.innerText = `✅ Connected | Streaming audio...`;
+    ws.send(JSON.stringify({ type: "register_sender", code }));
 
-  ffmpeg.stdout.on("data", (chunk) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      console.log("📤 Sending audio chunk of size:", chunk.length);
-      socket.send(chunk); // Send audio chunk over WebSocket
-    }
-  });
-});
+    ffmpeg = spawn(ffmpegPath, [
+      "-f", "dshow",
+      "-i", "audio=Stereo Mix (Realtek(R) Audio)",
+      "-ac", "1",
+      "-ar", "44100",
+      "-c:a", "aac",
+      "-b:a", "128k",
+      "-f", "adts",
+      "-"
+    ]);
 
-socket.on("close", () => {
-  console.log("❌ Sender disconnected from server");
-  if (ffmpeg) ffmpeg.kill("SIGINT");
-});
+    ffmpeg.stdout.on("data", chunk => {
+      if (ws.readyState === WS.OPEN) ws.send(chunk);
+    });
+    ffmpeg.stderr.on("data", data => console.log("FFmpeg:", data.toString()));
+  };
 
-socket.on("error", (err) => {
-  console.error("❌ WebSocket sender error:", err);
-  if (ffmpeg) ffmpeg.kill("SIGINT");
-});
+  ws.onclose = () => {
+    statusEl.innerText = "❌ WebSocket disconnected";
+    if (ffmpeg) ffmpeg.kill();
+  };
+  ws.onerror = (err) => {
+    console.error(err);
+    statusEl.innerText = "⚠️ WebSocket error";
+    if (ffmpeg) ffmpeg.kill();
+  };
+}
+document.getElementById("startBtn").onclick = startSender;
+function toggleTheme(){ document.body.classList.toggle("dark"); }
+</script>
+</body>
+</html>
