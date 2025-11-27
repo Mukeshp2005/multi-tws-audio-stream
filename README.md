@@ -1,37 +1,90 @@
-# Multi TWS Audio Streaming
+"MULTI TWS AUDIO STREAMING SYSTEM"
+Multi-TWS is a cross-platform audio streaming system that captures system audio from a Windows laptop and streams it to multiple smartphones or devices simultaneously. Users can listen via a browser—no app installation required.
 
-Stream Windows laptop audio to multiple devices in real-time, each playing through its own TWS earbuds. Secure, simple, and cross-platform.
+🚀 Features
 
-⚡ Features
+OTP-secured streaming: Connects receivers with a unique 6-digit code.
 
-Broadcast system audio from Windows to multiple devices.
+Browser-based mobile receiver: Listen to streams without installing any app.
 
-OTP-based secure connections for receivers.
+Unlimited listeners: Bypasses Bluetooth’s 1–2 device limitation.
 
-Real-time streaming using WebSockets.
+Cross-platform support: Streams from Windows laptops to Android/iOS devices.
 
-Interactive UI with audio waveform & bitrate display.
+Real-time audio: Uses FFmpeg to capture system audio and Node.js backend to relay streams.
 
-Receivers work on any modern browser.
+🧩 Technology Stack
 
-🛠 Tech Stack
+Backend: Node.js, WebSocket, FFmpeg
 
-Electron + HTML/JS/CSS → Sender UI
+Frontend: HTML, JS (receiver), Electron (desktop sender)
 
-Node.js + WebSocket → Audio relay server
+Streaming: Real-time audio chunks over WebSocket
 
-FFmpeg → Audio capture & encoding
+Security: OTP authentication
 
-🚀 How to Use
+⚙️ How It Works
 
-Launch the app → select Sender (mobile cannot host).
+Sender (Laptop/PC):
 
-Click “Start Sending Audio” → OTP is generated.
+Captures system audio using FFmpeg via Stereo Mix.
 
-Receivers: Enter OTP in browser → join stream.
+Streams audio chunks over WebSocket.
 
-Listen via TWS earbuds on each device.
+Generates OTP codes for secure receiver connections.
 
-🔒 Note
+Receiver (Mobile/Browser):
 
-Stereo Mix must be enabled on Windows for sending.
+Opens a browser and enters the 6-digit OTP.
+
+Connects to the WebSocket server.
+
+Plays the received audio in real-time using MediaSource API.
+
+Server (Node.js):
+
+Relays audio chunks from sender to all connected receivers.
+
+Ensures low-latency streaming and manages connections.
+
+💻 Project Structure
+/Multi-TWS
+├─ main.js          # Electron launcher and mode handler
+├─ sender.js        # Desktop sender code (capturing & streaming audio)
+├─ client.html      # Browser-based receiver
+├─ server.js        # Node.js WebSocket server
+├─ style.css        # Shared styles for sender & launcher
+└─ launcher.html    # Electron app launcher (optional)
+
+📌 Getting Started
+
+Install dependencies:
+
+npm install
+
+
+Run WebSocket server:
+
+node server.js
+
+
+Run Electron app:
+
+npm start
+
+
+Use the app:
+
+Choose Sender → Start streaming → Copy OTP.
+
+On a mobile browser, choose Receiver → Enter OTP → Listen.
+
+⚡ Unique Advantage
+
+Unlike traditional Bluetooth TWS:
+
+Supports unlimited listeners over the internet.
+
+Works cross-platform with zero app installation on mobile.
+
+Secure and real-time streaming for group listening experiences.
