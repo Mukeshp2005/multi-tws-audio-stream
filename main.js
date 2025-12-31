@@ -44,7 +44,7 @@ app.whenReady().then(() => {
   // 🟢 Start Sender (via fork, not spawn)
   ipcMain.handle("start-sender", async () => {
     return new Promise((resolve, reject) => {
-      const senderPath = path.join(__dirname, "sender.js");
+      const senderPath = path.join(__dirname, "sender.html");
       console.log("🟩 Launching sender via fork:", senderPath);
 
       const child = fork(senderPath, {
