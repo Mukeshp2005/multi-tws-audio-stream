@@ -1,60 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>Multi-TWS Audio Sender</title>
-<link rel="stylesheet" href="style.css">
-<style>
-  .otp-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 15px 0;
-  }
-  #copyBtn {
-    background: #ff80ab;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    cursor: pointer;
-    transition: 0.3s;
-  }
-  #copyBtn:hover {
-    background: #ff4081;
-  }
+  <meta charset="UTF-8">
+  <title>Multi-TWS Audio Sender</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .otp-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 15px 0;
+    }
 
-  .wave {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    height: 60px;
-    margin-top: 20px;
-    gap: 3px;
-  }
-  .bar {
-    width: 6px;
-    background: linear-gradient(180deg, #00e676, #00c853);
-    border-radius: 3px;
-    animation: bounce 0.5s ease-in-out infinite alternate;
-  }
-  @keyframes bounce {
-    from { height: 10px; }
-    to { height: 60px; }
-  }
+    #copyBtn {
+      background: #ff80ab;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
 
-  #bitrate {
-    margin-top: 10px;
-    font-size: 1rem;
-    color: #ffea00;
-  }
+    #copyBtn:hover {
+      background: #ff4081;
+    }
 
-  #status {
-    font-size: 1rem;
-    color: #ccc;
-    margin-top: 15px;
-  }
-</style>
+    .wave {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      height: 60px;
+      margin-top: 20px;
+      gap: 3px;
+    }
+
+    .bar {
+      width: 6px;
+      background: linear-gradient(180deg, #00e676, #00c853);
+      border-radius: 3px;
+      animation: bounce 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes bounce {
+      from {
+        height: 10px;
+      }
+
+      to {
+        height: 60px;
+      }
+    }
+
+    #bitrate {
+      margin-top: 10px;
+      font-size: 1rem;
+      color: #ffea00;
+    }
+
+    #status {
+      font-size: 1rem;
+      color: #ccc;
+      margin-top: 15px;
+    }
+  </style>
 </head>
+
 <body>
   <h1>🎙️ Multi-TWS Audio Sender</h1>
   <button id="startBtn">Start Sending Audio</button>
@@ -69,9 +80,34 @@
   <p id="status">Status: Idle</p>
 
   <script>
-    const ffmpegPath = require('ffmpeg-static');
     const { spawn } = require('child_process');
+    const path = require('path');
     const WS = require('ws');
+
+    // 🛠️ Robust FFmpeg Path Resolution
+    function getFFmpegPath() {
+      const fs = require('fs');
+      const path = require('path');
+
+      // 1. Try the packaged resources path (Standard for extraResources)
+      const packagedPath = path.join(process.resourcesPath, 'ffmpeg.exe');
+      if (fs.existsSync(packagedPath)) {
+        console.log("🚀 Found FFmpeg in resources:", packagedPath);
+        return packagedPath;
+      }
+
+      // 2. Fallback for development mode
+      try {
+        const devPath = require('ffmpeg-static');
+        console.log("🛠️ Using Development FFmpeg:", devPath);
+        return devPath;
+      } catch (e) {
+        console.error("❌ Could not find FFmpeg anywhere!");
+        return 'ffmpeg'; // Hope it's in the PATH
+      }
+    }
+
+    const ffmpegPath = getFFmpegPath();
 
     const AUTH_SERVER = "https://multi-tws-audio-stream.onrender.com";
     const WS_SERVER = "wss://multi-tws-audio-backend.onrender.com";
@@ -156,4 +192,5 @@
     };
   </script>
 </body>
+
 </html>
