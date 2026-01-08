@@ -14,6 +14,7 @@ function createLauncher() {
       nodeIntegration: true,
       contextIsolation: false,
     },
+    icon: path.join(__dirname, "assets", "icon.ico"),
   });
   mainWindow.loadFile(path.join(__dirname, "launcher.html"));
 }
@@ -26,6 +27,7 @@ function createModeWindow(mode) {
       nodeIntegration: true,
       contextIsolation: false,
     },
+    icon: path.join(__dirname, "assets", "icon.ico"),
   });
 
   if (mode === "sender")
@@ -38,7 +40,25 @@ app.whenReady().then(() => {
   createLauncher();
 
   ipcMain.on("launch-mode", (event, mode) => {
-    createModeWindow(mode);
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+
+    win.setSize(600, 450);
+    win.center();
+
+    if (mode === "sender")
+      win.loadFile(path.join(__dirname, "sender.html"));
+    else if (mode === "receiver")
+      win.loadFile(path.join(__dirname, "client.html"));
+  });
+
+  ipcMain.on("go-back", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+
+    win.setSize(500, 400);
+    win.center();
+    win.loadFile(path.join(__dirname, "launcher.html"));
   });
 
   // 🟢 Start Sender (via fork, not spawn)
