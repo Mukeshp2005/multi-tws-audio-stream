@@ -3,193 +3,218 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Multi-TWS Audio Sender</title>
+  <title>Multi TWS Audio - Broadcaster</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    .otp-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 15px 0;
-    }
-
-    #copyBtn {
-      background: #ff80ab;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 12px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    #copyBtn:hover {
-      background: #ff4081;
-    }
-
-    .wave {
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      height: 60px;
-      margin-top: 20px;
-      gap: 3px;
-    }
-
-    .bar {
-      width: 6px;
-      background: linear-gradient(180deg, #00e676, #00c853);
-      border-radius: 3px;
-      animation: bounce 0.5s ease-in-out infinite alternate;
-    }
-
-    @keyframes bounce {
-      from {
-        height: 10px;
-      }
-
-      to {
-        height: 60px;
-      }
-    }
-
-    #bitrate {
-      margin-top: 10px;
-      font-size: 1rem;
-      color: #ffea00;
-    }
-
-    #status {
-      font-size: 1rem;
-      color: #ccc;
-      margin-top: 15px;
-    }
-  </style>
 </head>
 
 <body>
-  <h1>🎙️ Multi-TWS Audio Sender</h1>
-  <button id="startBtn">Start Sending Audio</button>
+  <button class="icon-btn back-btn" onclick="goBack()">⬅ Back</button>
 
-  <div class="otp-container">
-    <p id="otp">🔑 OTP: —</p>
-    <button id="copyBtn">Copy</button>
+  <h1>🎙️ Broadcaster</h1>
+
+  <div class="card">
+    <p style="opacity:0.8; margin-bottom: -10px;">System Audio Transmission</p>
+
+    <div style="position: relative; margin: 20px 0;">
+      <div class="otp-container" id="otp">------</div>
+      <div id="otpTimer" style="font-size: 0.8rem; color: var(--primary); opacity: 0.7; margin-top: -10px;">Code expires
+        in 60s</div>
+    </div>
+
+    <div style="display: flex; gap: 10px; width: 100%;">
+      <button id="startBtn">🚀 Start Broadcasting</button>
+      <button id="regenBtn"
+        style="width: auto; background: rgba(128,128,128,0.1); color: var(--text-dark); border: 1px solid var(--border-dark); display: none;">🔄</button>
+    </div>
+
+    <div class="wave-container" id="wave">
+      <!-- Generated via JS -->
+    </div>
+
+    <div id="bitrate" style="font-family:monospace; color:var(--primary); font-weight:600; min-height:1.2em;"></div>
+    <div id="status">Status: Standby</div>
   </div>
 
-  <div class="wave" id="wave"></div>
-  <p id="bitrate">Bitrate: —</p>
-  <p id="status">Status: Idle</p>
+  <!-- Instruction Modal -->
+  <style>
+    #setupModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-content {
+      background: #1a1a1a;
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 400px;
+      border: 1px solid var(--primary);
+      box-shadow: 0 0 30px var(--primary-glow);
+    }
+
+    .modal-content h3 {
+      color: var(--primary);
+      -webkit-text-fill-color: initial;
+      background: none;
+      text-align: left;
+    }
+
+    .modal-content ol {
+      padding-left: 20px;
+      line-height: 1.6;
+      color: #ccc;
+      font-size: 0.95rem;
+    }
+
+    .modal-content ol b {
+      color: #fff;
+    }
+  </style>
+
+  <div id="setupModal">
+    <div class="modal-content">
+      <h3>🛠️ Audio Configuration</h3>
+      <p style="color:#aaa; margin-bottom:15px; font-size:0.9rem;">To capture system sound, please enable <b>Stereo
+          Mix</b>:</p>
+      <ol>
+        <li>Right-click 🔊 <b>Volume icon</b> in Taskbar.</li>
+        <li>Select <b>Sound Settings</b>.</li>
+        <li>Go to <b>All sound devices</b>.</li>
+        <li>Under Input, find <b>Stereo Mix</b>.</li>
+        <li>Set to <b>Allow</b> and <b>Enable</b>.</li>
+      </ol>
+      <button onclick="closeModal()" style="margin-top:20px;">I've Enabled It / Proceed</button>
+    </div>
+  </div>
 
   <script>
     const { spawn } = require('child_process');
     const path = require('path');
     const WS = require('ws');
 
-    // 🛠️ Robust FFmpeg Path Resolution
+    // Theme Logic
+    function applyTheme() {
+      if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+      else document.body.classList.remove('light');
+    }
+    applyTheme();
+
+    const waveContainer = document.getElementById('wave');
+    for (let i = 0; i < 15; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'wave-bar';
+      bar.style.animationDelay = `${i * 0.1}s`;
+      waveContainer.appendChild(bar);
+    }
+
     function getFFmpegPath() {
       const fs = require('fs');
-      const path = require('path');
-
-      // 1. Try the packaged resources path (Standard for extraResources)
       const packagedPath = path.join(process.resourcesPath, 'ffmpeg.exe');
-      if (fs.existsSync(packagedPath)) {
-        console.log("🚀 Found FFmpeg in resources:", packagedPath);
-        return packagedPath;
-      }
-
-      // 2. Fallback for development mode
-      try {
-        const devPath = require('ffmpeg-static');
-        console.log("🛠️ Using Development FFmpeg:", devPath);
-        return devPath;
-      } catch (e) {
-        console.error("❌ Could not find FFmpeg anywhere!");
-        return 'ffmpeg'; // Hope it's in the PATH
-      }
+      if (fs.existsSync(packagedPath)) return packagedPath;
+      try { return require('ffmpeg-static'); } catch (e) { return 'ffmpeg'; }
     }
 
     const ffmpegPath = getFFmpegPath();
-
     const AUTH_SERVER = "https://multi-tws-audio-stream.onrender.com";
     const WS_SERVER = "wss://multi-tws-audio-backend.onrender.com";
 
     const otpEl = document.getElementById("otp");
     const statusEl = document.getElementById("status");
     const bitrateEl = document.getElementById("bitrate");
-    const copyBtn = document.getElementById("copyBtn");
-    const waveContainer = document.getElementById("wave");
+    const otpTimerEl = document.getElementById("otpTimer");
+    const regenBtn = document.getElementById("regenBtn");
 
-    // create wave bars
-    for (let i = 0; i < 20; i++) {
-      const bar = document.createElement("div");
-      bar.className = "bar";
-      bar.style.animationDelay = `${i * 0.05}s`;
-      waveContainer.appendChild(bar);
-    }
-
-    let ffmpeg;
+    let ffmpeg, ws;
     let isStreaming = false;
+    let timeLeft = 60;
+    let timerId = null;
 
-    async function generateOtp() {
-      const res = await fetch(`${AUTH_SERVER}/api/auth/generate`, { method: "POST" });
-      const data = await res.json();
-      otpEl.innerText = `🔑 OTP: ${data.code}`;
-      return data.code;
+    async function fetchNewOtp() {
+      try {
+        const res = await fetch(`${AUTH_SERVER}/api/auth/generate`, { method: "POST" });
+        const data = await res.json();
+        otpEl.innerText = data.code;
+
+        if (ws && ws.readyState === WS.OPEN) {
+          ws.send(JSON.stringify({ type: "register_sender", code: data.code }));
+        }
+
+        resetTimer();
+        return data.code;
+      } catch (err) {
+        statusEl.innerText = "Status: ❌ OTP Error";
+        return null;
+      }
     }
 
-    async function startSender() {
+    function resetTimer() {
+      clearInterval(timerId);
+      timeLeft = 60;
+      otpTimerEl.innerText = `Code expires in ${timeLeft}s`;
+      timerId = setInterval(() => {
+        timeLeft--;
+        otpTimerEl.innerText = `Code expires in ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          fetchNewOtp();
+        }
+      }, 1000);
+    }
+
+    async function startBroadcasting() {
       if (isStreaming) return;
       isStreaming = true;
+      statusEl.innerText = "Status: Initializing...";
+      regenBtn.style.display = "block";
 
-      const code = await generateOtp();
-      const ws = new WS(WS_SERVER);
+      const code = await fetchNewOtp();
+      if (!code) { isStreaming = false; return; }
+
+      ws = new WS(WS_SERVER);
       ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
-        statusEl.innerText = "✅ Connected to WebSocket | Streaming...";
+        statusEl.innerText = "Status: 📡 Live Transmitting";
+        waveContainer.classList.add('animating');
         ws.send(JSON.stringify({ type: "register_sender", code }));
 
-        ffmpeg = spawn(ffmpegPath, [
-          "-f", "dshow",
-          "-i", "audio=Stereo Mix (Realtek(R) Audio)",
-          "-ac", "1",
-          "-ar", "44100",
-          "-c:a", "aac",
-          "-b:a", "128k",
-          "-f", "adts",
-          "-"
-        ]);
+        if (!ffmpeg) {
+          ffmpeg = spawn(ffmpegPath, [
+            "-f", "dshow", "-i", "audio=Stereo Mix (Realtek(R) Audio)",
+            "-ac", "1", "-ar", "44100", "-c:a", "aac", "-b:a", "128k", "-f", "adts", "-"
+          ]);
 
-        ffmpeg.stdout.on("data", chunk => {
-          if (ws.readyState === WS.OPEN) ws.send(chunk);
-
-          // fake bitrate animation
-          const randomBitrate = (120 + Math.random() * 16).toFixed(1);
-          bitrateEl.innerText = `Bitrate: ${randomBitrate} kbps`;
-        });
-
-        ffmpeg.stderr.on("data", d => console.log("FFmpeg:", d.toString()));
+          ffmpeg.stdout.on("data", chunk => {
+            if (ws.readyState === WS.OPEN) ws.send(chunk);
+            const kbps = (110 + Math.random() * 20).toFixed(1);
+            bitrateEl.innerText = `${kbps} kbps`;
+          });
+        }
       };
 
       ws.onclose = () => {
-        statusEl.innerText = "❌ WebSocket disconnected";
-        if (ffmpeg) ffmpeg.kill();
+        statusEl.innerText = "Status: ❌ Disconnected";
         isStreaming = false;
+        clearInterval(timerId);
+        waveContainer.classList.remove('animating');
+        if (ffmpeg) { ffmpeg.kill(); ffmpeg = null; }
+        regenBtn.style.display = "none";
       };
 
-      ws.onerror = () => {
-        statusEl.innerText = "⚠️ WebSocket error";
-        if (ffmpeg) ffmpeg.kill();
-        isStreaming = false;
+      ws.onerror = (e) => {
+        console.error(e);
+        statusEl.innerText = "Status: ❌ Connection Error";
       };
     }
 
-    document.getElementById("startBtn").onclick = startSender;
-    copyBtn.onclick = () => {
-      const otpText = otpEl.innerText.replace("🔑 OTP: ", "");
-      navigator.clipboard.writeText(otpText);
-      copyBtn.innerText = "Copied!";
-      setTimeout(() => copyBtn.innerText = "Copy", 1500);
-    };
+    document.getElementById("startBtn").onclick = startBroadcasting;
+    regenBtn.onclick = fetchNewOtp;
+    function closeModal() { document.getElementById("setupModal").style.display = "none"; }
+    function goBack() { require('electron').ipcRenderer.send('go-back'); }
   </script>
 </body>
 
