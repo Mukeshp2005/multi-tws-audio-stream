@@ -1,8 +1,21 @@
 /* style.css */
+:root {
+  --primary: #00e676;
+  --primary-glow: rgba(0, 230, 118, 0.4);
+  --bg-dark: radial-gradient(circle at top, #1a1a1a, #050505);
+  --bg-light: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  --card-bg-dark: rgba(30, 30, 30, 0.7);
+  --card-bg-light: rgba(255, 255, 255, 0.9);
+  --text-dark: #eee;
+  --text-light: #000;
+  --border-dark: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(0, 0, 0, 0.15);
+}
+
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at top, #111, #000);
-  color: #eee;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-dark);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,97 +23,162 @@ body {
   height: 100vh;
   margin: 0;
   overflow: hidden;
+  transition: all 0.5s ease;
 }
 
-h1, h2 {
-  font-weight: 600;
+body.light {
+  background: var(--bg-light);
+  color: var(--text-light);
+}
+
+/* Base Heading Styling */
+h1,
+h2 {
+  font-weight: 700;
   text-align: center;
   margin-bottom: 20px;
-  background: linear-gradient(90deg, #00e676, #00bfa5, #00e676);
+  background: linear-gradient(90deg, var(--primary), #00bfa5);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: glow 3s infinite linear;
+  filter: drop-shadow(0 0 5px var(--primary-glow));
 }
 
-@keyframes glow {
-  0%, 100% { text-shadow: 0 0 10px #00e676; }
-  50% { text-shadow: 0 0 20px #00bfa5; }
-}
-
-button {
-  background: linear-gradient(90deg, #00e676, #00bfa5);
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  color: #000;
-  font-weight: bold;
-  font-size: 1rem;
-  margin: 10px;
-  cursor: pointer;
-  transition: transform 0.2s, background 0.3s;
-}
-button:hover {
-  transform: scale(1.05);
-  background: linear-gradient(90deg, #00bfa5, #00e676);
-}
-
-#otp {
-  font-size: 1.8rem;
-  color: #ffea00;
-  margin: 15px 0;
+/* Premium Card Layout */
+.card {
+  background: var(--card-bg-dark);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  padding: 40px;
+  border-radius: 24px;
+  border: 1px solid var(--border-dark);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 450px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 20px;
+  transition: transform 0.3s ease, background 0.5s ease;
 }
 
-.copy-btn {
-  background: #333;
-  color: #ffea00;
+body.light .card {
+  background: var(--card-bg-light);
+  border-color: var(--border-light);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Control Buttons */
+button {
+  background: linear-gradient(90deg, var(--primary), #00bfa5);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  color: #000;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 100%;
+  box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+button:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px var(--primary-glow);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Utility Buttons (Back, Theme) */
+.icon-btn {
+  position: absolute;
+  top: 20px;
+  background: rgba(128, 128, 128, 0.1);
+  color: inherit;
+  border: 1px solid var(--border-dark);
+  padding: 10px;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 45px;
+  height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: 0.3s;
-}
-.copy-btn:hover {
-  background: #ffea00;
-  color: #111;
+  z-index: 100;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
 }
 
-#status {
-  margin-top: 10px;
-  font-size: 1rem;
-  color: #aaa;
+body.light .icon-btn {
+  border-color: var(--border-light);
 }
 
+.icon-btn:hover {
+  background: var(--primary);
+  color: #000;
+  border-color: transparent;
+}
+
+.back-btn {
+  left: 20px;
+  border-radius: 12px;
+  width: auto;
+  height: auto;
+  padding: 10px 15px;
+}
+
+.theme-btn {
+  right: 20px;
+}
+
+/* OTP Display */
+.otp-container {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffea00;
+  letter-spacing: 5px;
+  margin: 10px 0;
+  text-shadow: 0 0 10px rgba(255, 234, 0, 0.3);
+}
+
+/* Wave Visualizer */
 .wave-container {
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  height: 40px;
-  margin: 20px 0;
+  height: 60px;
+  margin: 10px 0;
 }
+
 .wave-bar {
   width: 6px;
   height: 10px;
-  background: #00e676;
-  animation: wave 1s infinite ease-in-out;
-}
-.wave-bar:nth-child(2) { animation-delay: 0.1s; }
-.wave-bar:nth-child(3) { animation-delay: 0.2s; }
-.wave-bar:nth-child(4) { animation-delay: 0.3s; }
-.wave-bar:nth-child(5) { animation-delay: 0.4s; }
-
-@keyframes wave {
-  0%, 100% { height: 10px; opacity: 0.5; }
-  50% { height: 40px; opacity: 1; }
+  background: var(--primary);
+  border-radius: 3px;
+  transition: height 0.1s ease;
 }
 
-.bitrate {
-  font-size: 1.2rem;
-  color: #00e676;
-  margin-top: 5px;
+.animating .wave-bar {
+  animation: wavePulse 0.5s infinite alternate ease-in-out;
+}
+
+@keyframes wavePulse {
+  from {
+    height: 10px;
+    opacity: 0.5;
+  }
+
+  to {
+    height: 60px;
+    opacity: 1;
+  }
+}
+
+#status {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  text-align: center;
 }
