@@ -1,174 +1,193 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎧 Multi-TWS Audio Receiver</title>
-<link rel="stylesheet" href="style.css">
-<style>
-  .container {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    margin-top:40px;
-  }
+    <meta charset="UTF-8">
+    <title>Multi TWS Audio - Receiver</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            /* Purple */
+            --primary-glow: rgba(139, 92, 246, 0.4);
+        }
 
-  input, button {
-    padding:10px 15px;
-    margin:8px;
-    font-size:1rem;
-    border-radius:6px;
-    border:none;
-  }
+        input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            color: inherit;
+            font-size: 1.2rem;
+            text-align: center;
+            letter-spacing: 5px;
+            outline: none;
+            transition: 0.3s;
+        }
 
-  input {
-    width:200px;
-    text-align:center;
-  }
+        body.light input {
+            background: rgba(255, 255, 255, 0.5);
+            border-color: var(--border-light);
+        }
 
-  #connectBtn {
-    background:#7c4dff;
-    color:#fff;
-    cursor:pointer;
-    transition:0.3s;
-  }
-  #connectBtn:hover { background:#651fff; }
-
-  .wave {
-    display:flex;
-    justify-content:center;
-    align-items:flex-end;
-    height:60px;
-    margin-top:25px;
-    gap:3px;
-  }
-  .bar {
-    width:6px;
-    background:linear-gradient(180deg,#7c4dff,#651fff);
-    border-radius:3px;
-    animation:bounce 0.6s ease-in-out infinite alternate;
-  }
-  @keyframes bounce {
-    from{height:10px;}
-    to{height:60px;}
-  }
-
-  #bitrate {
-    margin-top:10px;
-    font-size:1rem;
-    color:#ffea00;
-  }
-
-  audio {
-    margin-top:25px;
-    width:300px;
-  }
-
-  #status {
-    margin-top:15px;
-    font-weight:bold;
-  }
-</style>
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+    </style>
 </head>
+
 <body>
-  <h1>🎧 Multi-TWS Audio Receiver</h1>
+    <button class="icon-btn back-btn" onclick="goBack()">⬅ Back</button>
 
-  <div class="container">
-    <input id="codeInput" placeholder="Enter 6-digit code" maxlength="6">
-    <button id="connectBtn">Connect</button>
-    <p id="status">Idle</p>
+    <h1>🎧 Receiver</h1>
 
-    <div class="wave" id="wave"></div>
-    <p id="bitrate">Bitrate: —</p>
-    <audio id="audio" controls></audio>
-  </div>
+    <div class="card">
+        <p style="opacity:0.8; margin-bottom: -5px;">Join Audio Stream</p>
+        <input id="codeInput" placeholder="000000" maxlength="6">
+        <div style="display: flex; gap: 10px; width: 100%; margin-top: -10px;">
+            <button id="connectBtn">🚀 Connect</button>
+            <button id="stopBtn" style="background: #ff4444; color: #fff; width: auto; display: none;">⏹</button>
+        </div>
 
-  <script>
-    const AUTH_SERVER = "https://multi-tws-audio-stream.onrender.com";
-    const WS_SERVER = "wss://multi-tws-audio-backend.onrender.com";
+        <div class="wave-container" id="wave">
+            <!-- Generated via JS -->
+        </div>
 
-    const audioEl = document.getElementById("audio");
-    const statusEl = document.getElementById("status");
-    const bitrateEl = document.getElementById("bitrate");
-    const waveContainer = document.getElementById("wave");
+        <div id="bitrate" style="font-family:monospace; color:var(--primary); font-weight:600; min-height:1.2em;"></div>
+        <audio id="audio" controls style="width: 100%; height: 35px; filter: opacity(0.7);"></audio>
+        <div id="status">Status: Standby</div>
+    </div>
 
-    for(let i=0;i<20;i++){
-      const bar=document.createElement("div");
-      bar.className="bar";
-      bar.style.animationDelay=`${i*0.05}s`;
-      waveContainer.appendChild(bar);
-    }
+    <script>
+        const { ipcRenderer } = require('electron');
+        const AUTH_SERVER = "https://multi-tws-audio-stream.onrender.com";
+        const WS_SERVER = "wss://multi-tws-audio-backend.onrender.com";
 
-    let ws,mediaSource,sourceBuffer,queue=[];
-    document.getElementById("connectBtn").onclick = async () => {
-      const code=document.getElementById("codeInput").value.trim();
-      if(!/^\d{6}$/.test(code)){ alert("Enter valid 6-digit code"); return; }
+        // Theme Logic
+        function applyTheme() {
+            if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+            else document.body.classList.remove('light');
+        }
+        applyTheme();
 
-      try{
-        const res=await fetch(`${AUTH_SERVER}/api/auth/join`,{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({code})
-        });
-        const data=await res.json();
-        if(!data.ok){ statusEl.innerText="❌ Invalid or expired code"; return; }
-      }catch(e){ statusEl.innerText="❌ Failed to reach server"; return; }
+        const waveContainer = document.getElementById('wave');
+        for (let i = 0; i < 15; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'wave-bar';
+            bar.style.animationDelay = `${i * 0.1}s`;
+            waveContainer.appendChild(bar);
+        }
 
-      statusEl.innerText="✅ Code verified. Connecting...";
-      connectStream(code);
-    };
+        const audioEl = document.getElementById("audio");
+        const statusEl = document.getElementById("status");
+        const bitrateEl = document.getElementById("bitrate");
+        const connectBtn = document.getElementById("connectBtn");
+        const stopBtn = document.getElementById("stopBtn");
 
-    function connectStream(code){
-      mediaSource=new MediaSource();
-      audioEl.src=URL.createObjectURL(mediaSource);
-      mediaSource.addEventListener("sourceopen",()=>{
-        sourceBuffer=mediaSource.addSourceBuffer("audio/aac");
-        sourceBuffer.mode="sequence";
-        sourceBuffer.addEventListener("updateend",handleBufferUpdate);
+        let ws, mediaSource, sourceBuffer, queue = [];
 
-        ws=new WebSocket(WS_SERVER);
-        ws.binaryType="arraybuffer";
+        function stopStream() {
+            if (ws) ws.close();
+            audioEl.pause();
+            audioEl.src = "";
+            statusEl.innerText = "Status: Disconnected";
+            waveContainer.classList.remove('animating');
+            bitrateEl.innerText = "";
+            stopBtn.style.display = "none";
+            connectBtn.disabled = false;
+            connectBtn.style.opacity = "1";
+        }
 
-        ws.onopen=()=>{
-          ws.send(JSON.stringify({type:"register_client",code}));
-          statusEl.innerText="🎵 Receiving audio...";
+        document.getElementById("connectBtn").onclick = async () => {
+            const code = document.getElementById("codeInput").value.trim();
+            if (!/^\d{6}$/.test(code)) { alert("Valid 6-digit code required"); return; }
+
+            // Prime audio
+            audioEl.play().then(() => audioEl.pause()).catch(() => { });
+
+            statusEl.innerText = "Status: Verifying...";
+            try {
+                const res = await fetch(`${AUTH_SERVER}/api/auth/join`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code })
+                });
+                const data = await res.json();
+                if (!data.ok) { statusEl.innerText = "Status: ❌ Invalid Code"; return; }
+            } catch (e) { statusEl.innerText = "Status: ❌ Server Error"; return; }
+
+            statusEl.innerText = "Status: Connecting...";
+            connectBtn.disabled = true;
+            connectBtn.style.opacity = "0.5";
+            connectStream(code);
         };
 
-        ws.onmessage=(event)=>{
-          const chunk=new Uint8Array(event.data);
-          if(!sourceBuffer.updating&&queue.length===0){
-            appendChunk(chunk);
-          }else{ queue.push(chunk); }
+        function connectStream(code) {
+            mediaSource = new MediaSource();
+            audioEl.src = URL.createObjectURL(mediaSource);
+            mediaSource.addEventListener("sourceopen", () => {
+                sourceBuffer = mediaSource.addSourceBuffer("audio/aac");
+                sourceBuffer.mode = "sequence";
+                sourceBuffer.addEventListener("updateend", handleBufferUpdate);
 
-          const randomBitrate=(118+Math.random()*14).toFixed(1);
-          bitrateEl.innerText=`Bitrate: ${randomBitrate} kbps`;
-        };
+                ws = new WebSocket(WS_SERVER);
+                ws.binaryType = "arraybuffer";
 
-        ws.onclose=()=>statusEl.innerText="❌ Disconnected";
-        ws.onerror=()=>statusEl.innerText="⚠ Connection error";
-      });
-    }
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({ type: "register_client", code }));
+                    statusEl.innerText = "Status: 🎵 Receiving Live Audio";
+                    waveContainer.classList.add('animating');
+                    stopBtn.style.display = "block";
+                };
 
-    function handleBufferUpdate(){
-      if(queue.length>0&&!sourceBuffer.updating) appendChunk(queue.shift());
-      else syncPlayback();
-    }
+                ws.onmessage = (event) => {
+                    const chunk = new Uint8Array(event.data);
+                    if (!sourceBuffer.updating && queue.length === 0) { appendChunk(chunk); }
+                    else { queue.push(chunk); }
 
-    function appendChunk(chunk){
-      try{ sourceBuffer.appendBuffer(chunk); }
-      catch(e){ queue=[]; }
-    }
+                    const randomBitrate = (118 + Math.random() * 14).toFixed(1);
+                    bitrateEl.innerText = `${randomBitrate} kbps`;
+                };
 
-    function syncPlayback(){
-      const buffered=audioEl.buffered;
-      if(buffered.length===0) return;
-      const end=buffered.end(buffered.length-1);
-      const lag=end-audioEl.currentTime;
-      if(audioEl.paused&&lag>0.25) audioEl.play().catch(()=>{});
-      if(lag>2.0) audioEl.currentTime=end-0.5;
-      if(lag<0.1&&!audioEl.paused) audioEl.pause();
-    }
-  </script>
+                ws.onclose = () => {
+                    if (statusEl.innerText !== "Status: Disconnected") {
+                        statusEl.innerText = "Status: ❌ Disconnected";
+                    }
+                    waveContainer.classList.remove('animating');
+                    stopBtn.style.display = "none";
+                    connectBtn.disabled = false;
+                    connectBtn.style.opacity = "1";
+                };
+            });
+        }
+
+        stopBtn.onclick = stopStream;
+
+        function handleBufferUpdate() {
+            if (queue.length > 0 && !sourceBuffer.updating) appendChunk(queue.shift());
+            else syncPlayback();
+        }
+
+        function appendChunk(chunk) {
+            try { sourceBuffer.appendBuffer(chunk); }
+            catch (e) { queue = []; }
+        }
+
+        function syncPlayback() {
+            const buffered = audioEl.buffered;
+            if (buffered.length === 0) return;
+            const start = buffered.start(0);
+            const end = buffered.end(buffered.length - 1);
+            if (audioEl.currentTime < start) audioEl.currentTime = start;
+            const lag = end - audioEl.currentTime;
+            if (audioEl.paused && lag > 0.3) audioEl.play().catch(() => { });
+            if (lag > 2.0) audioEl.currentTime = end - 0.5;
+        }
+
+        function goBack() { ipcRenderer.send('go-back'); }
+    </script>
 </body>
-</html>
 
+</html>
