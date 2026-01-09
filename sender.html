@@ -23,6 +23,8 @@
 
     <div style="display: flex; gap: 10px; width: 100%;">
       <button id="startBtn">🚀 Start Broadcasting</button>
+      <button id="copyBtn"
+        style="width: auto; background: rgba(128,128,128,0.1); color: var(--text-dark); border: 1px solid var(--border-dark);">📋</button>
       <button id="regenBtn"
         style="width: auto; background: rgba(128,128,128,0.1); color: var(--text-dark); border: 1px solid var(--border-dark); display: none;">🔄</button>
     </div>
@@ -32,6 +34,9 @@
     </div>
 
     <div id="bitrate" style="font-family:monospace; color:var(--primary); font-weight:600; min-height:1.2em;"></div>
+    <div id="listenerCount"
+      style="font-size: 0.9rem; font-weight: bold; color: var(--primary); opacity: 0.8; margin-top: 5px;">👥 0 Listeners
+    </div>
     <div id="status">Status: Standby</div>
   </div>
 
@@ -126,8 +131,10 @@
     const otpEl = document.getElementById("otp");
     const statusEl = document.getElementById("status");
     const bitrateEl = document.getElementById("bitrate");
+    const listenerCountEl = document.getElementById("listenerCount");
     const otpTimerEl = document.getElementById("otpTimer");
     const regenBtn = document.getElementById("regenBtn");
+    const copyBtn = document.getElementById("copyBtn");
 
     let ffmpeg, ws;
     let isStreaming = false;
@@ -193,7 +200,18 @@
             const kbps = (110 + Math.random() * 20).toFixed(1);
             bitrateEl.innerText = `${kbps} kbps`;
           });
+
+          ffmpeg.stderr.on("data", d => console.log("FFmpeg Output:", d.toString()));
         }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "count") {
+            listenerCountEl.innerText = `👥 ${msg.value} Listeners`;
+          }
+        } catch (e) { }
       };
 
       ws.onclose = () => {
@@ -203,6 +221,7 @@
         waveContainer.classList.remove('animating');
         if (ffmpeg) { ffmpeg.kill(); ffmpeg = null; }
         regenBtn.style.display = "none";
+        listenerCountEl.innerText = "👥 0 Listeners";
       };
 
       ws.onerror = (e) => {
@@ -213,6 +232,14 @@
 
     document.getElementById("startBtn").onclick = startBroadcasting;
     regenBtn.onclick = fetchNewOtp;
+
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(otpEl.innerText);
+      const originalText = copyBtn.innerText;
+      copyBtn.innerText = "✅";
+      setTimeout(() => copyBtn.innerText = originalText, 1500);
+    };
+
     function closeModal() { document.getElementById("setupModal").style.display = "none"; }
     function goBack() { require('electron').ipcRenderer.send('go-back'); }
   </script>
